@@ -1,0 +1,28 @@
+stages:
+    - sonar-analysis
+    - deploy
+    - failure
+sonar-analysis:
+  stage: sonar-analysis
+  script:
+    - echo "Sonar Analysis Started .."   
+    - SonarQube.Scanner.MSBuild.exe begin /k:"TruterraagK12MVC" /d:sonar.verbose=true /d:sonar.exclusions="**/Kentico/**,**/Content/**,**/Scripts/**,**/Generated/Modules/PIMS/**"
+    - MSBuild.exe Truterraag.sln 
+    - SonarQube.Scanner.MSBuild.exe end    
+    - echo "Sonar Analysis completed"
+deploy:
+  stage: deploy
+  script:
+    - echo "Deployment Started"
+    - MSBuild.exe MilkProducts.Web\Truterraag.Web.csproj /p:Configuration=Release /p:Platform=AnyCPU /t:rebuild  /p:WebPublishMethod=FileSystem /p:DeleteExistingFiles=True /p:OutputPath=c:\Builds\Truterraag\MVC"
+    - ncftpput -R -E -v -u Truterraag_LOL -p ray1@34  192.168.1.109 Truterraag.Web C:\Builds\Truterraag\MVC\_PublishedWebsites\Truterraag.Web\*
+    - RMDIR /s /q \C:\Builds\MilkProducts\MVC
+  environment: MilkProductsQa
+  when: manual
+  only:
+  - /^release/.*$/
+failure:
+   stage: failure
+   script:
+   -  echo "Build Failed"
+   when: on_failure
